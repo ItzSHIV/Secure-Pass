@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:secure_pass/constants/routes.dart';
 import 'package:secure_pass/services/auth/auth_service.dart';
 import 'package:secure_pass/views/login_view.dart';
-import 'package:secure_pass/views/password_view.dart';
+import 'package:secure_pass/views/passwords/new_password_view.dart';
+import 'package:secure_pass/views/passwords/password_view.dart';
 import 'package:secure_pass/views/register_view.dart';
 import 'package:secure_pass/views/verify_email_view.dart';
 
@@ -20,6 +21,7 @@ void main() {
         registerRoute: (context) => const RegisterView(),
         passwordRoute:(context) => const PasswordView(),
         verifyEmailRoute:(context) => const VerifyEmailView(),
+        newPasswordRoute:(context) => const NewPasswordView(),
       },
     ),
   );

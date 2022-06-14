@@ -14,8 +14,14 @@ class _PasswordViewState extends State<PasswordView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Main UI'),
+      appBar: AppBar(title: const Text('Your Passwords'),
       actions: [
+        IconButton(
+          onPressed: () {
+            Navigator.of(context).pushNamed(newPasswordRoute);
+          }, 
+          icon: const Icon(Icons.add)
+        ),
         PopupMenuButton<MenuAction>(
           onSelected: (value) async{
             switch(value){

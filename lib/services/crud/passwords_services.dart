@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:path_provider/path_provider.dart';
@@ -6,6 +7,29 @@ import 'crud_exceptions.dart';
 
 class PasswordsService {
   Database? _db;
+
+  List<DatabasePassword> _password = [];
+
+  final _passwordStreamController = 
+  StreamController<List<DatabasePassword>>.broadcast();
+
+  Future<DatabaseUser> getOrCreateUser({required String email}) async{
+    try {
+      final user = await getUser(email: email);
+      return user;
+    } on CouldNotFindUser {
+      final createdUser = await createUser(email: email);
+      return createdUser;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<void> _cachePassword() async{
+    final allPassword = await getAllPasswords();
+    _password = allPassword.toList();
+    _passwordStreamController.add(_password);
+  }
 
   Future<DatabasePassword> updatePassword({required DatabasePassword password, required String text}) async{
       final db = _getDatabaseOrThrow();
@@ -20,11 +44,15 @@ class PasswordsService {
     if(updatesCount == 0){
       throw CouldNotUpdatePassword();
     } else{
-      return await getPassword(id: password.id);
+      final updatePassword = await getPassword(id: password.id);
+      _password.removeWhere((password) => password.id == updatePassword.id);
+      _password.add(updatePassword);
+      _passwordStreamController.add(_password);
+      return updatePassword;
     }
   }
 
-  Future<Iterable<DatabasePassword>> getAllPasswords({required int id}) async{
+  Future<Iterable<DatabasePassword>> getAllPasswords() async{
     final db = _getDatabaseOrThrow();
     final passwords = await db.query(passwordTable);
 
@@ -33,23 +61,30 @@ class PasswordsService {
 
   Future<DatabasePassword> getPassword({required int id}) async{
     final db = _getDatabaseOrThrow();
-    final password = await db.query(
+    final passwords = await db.query(
       passwordTable, 
       limit: 1, 
       where: 'id = ?', 
       whereArgs: [id],
     );
 
-    if(password.isEmpty){
+    if(passwords.isEmpty){
       throw CouldNotFindPassword();
     } else{
-      return DatabasePassword.fromRow(password.first);
+      final password = DatabasePassword.fromRow(passwords.first);
+      _password.removeWhere((password) => password.id == id);
+      _password.add(password);
+      _passwordStreamController.add(_password);
+      return password;
     }
   }
 
   Future<int> deleteAllPasswords() async{
     final db = _getDatabaseOrThrow();
-    return await db.delete(passwordTable);
+    final numberofDeletions = await db.delete(passwordTable);
+    _password = [];
+    _passwordStreamController.add(_password);
+    return numberofDeletions;
   }
 
   Future<void> deletePassword({required int id}) async{
@@ -61,6 +96,9 @@ class PasswordsService {
     );
     if(deletedCount == 0){
       throw CouldNotDeletePassword();
+    } else{
+      _password.removeWhere((password) => password.id == id);
+      _passwordStreamController.add(_password);
     }
   }
 
@@ -87,6 +125,9 @@ class PasswordsService {
       text: text, 
       isSynchedWithCloud: true,
     );
+
+    _password.add(password);
+    _passwordStreamController.add(_password);
 
     return password;
   }
@@ -174,7 +215,7 @@ class PasswordsService {
       await db.execute(createUserTable);
       // create the password table
       await db.execute(createPasswordTable);
-
+      await _cachePassword();
     } on MissingPlatformDirectoryException {
       throw UnableToGetDocumentsDirectory();
     }}
