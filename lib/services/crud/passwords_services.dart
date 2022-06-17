@@ -1,296 +1,358 @@
-import 'dart:async';
-import 'package:flutter/foundation.dart';
-import 'package:sqflite/sqflite.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:path/path.dart' show join;
-import 'crud_exceptions.dart';
+// import 'dart:async';
 
-class PasswordsService {
-  Database? _db;
+// import 'package:flutter/foundation.dart';
+// import 'package:secure_pass/extensions/list/filter.dart';
+// import 'package:secure_pass/services/crud/crud_exceptions.dart';
+// import 'package:sqflite/sqflite.dart';
+// import 'package:path_provider/path_provider.dart';
+// import 'package:path/path.dart' show join;
 
-  List<DatabasePassword> _password = [];
+// class PasswordsService {
+//   Database? _db;
 
-  final _passwordStreamController = 
-  StreamController<List<DatabasePassword>>.broadcast();
+//   List<DatabasePassword> _passwords = [];
 
-  Future<DatabaseUser> getOrCreateUser({required String email}) async{
-    try {
-      final user = await getUser(email: email);
-      return user;
-    } on CouldNotFindUser {
-      final createdUser = await createUser(email: email);
-      return createdUser;
-    } catch (e) {
-      rethrow;
-    }
-  }
+//   DatabaseUser? _user;
 
-  Future<void> _cachePassword() async{
-    final allPassword = await getAllPasswords();
-    _password = allPassword.toList();
-    _passwordStreamController.add(_password);
-  }
+//   static final PasswordsService _shared = PasswordsService._sharedInstance();
+//   PasswordsService._sharedInstance() {
+//     _passwordsStreamController = StreamController<List<DatabasePassword>>.broadcast(
+//       onListen: () {
+//         _passwordsStreamController.sink.add(_passwords);
+//       },
+//     );
+//   }
+//   factory PasswordsService() => _shared;
 
-  Future<DatabasePassword> updatePassword({required DatabasePassword password, required String text}) async{
-      final db = _getDatabaseOrThrow();
+//   late final StreamController<List<DatabasePassword>> _passwordsStreamController;
 
-    await getPassword(id: password.id);
+//   Stream<List<DatabasePassword>> get allPasswords =>
+//       _passwordsStreamController.stream.filter((password) {
+//         final currentUser = _user;
+//         if (currentUser != null) {
+//           return password.userId == currentUser.id;
+//         } else {
+//           throw UserShouldBeSetBeforeReadingAllPasswords();
+//         }
+//       });
 
-    final updatesCount = await db.update(passwordTable, {
-      textColumn: text,
-      isSynchedWithCloudColumn: 0,
-    });
+//   Future<DatabaseUser> getOrCreateUser({
+//     required String email,
+//     bool setAsCurrentUser = true,
+//   }) async {
+//     try {
+//       final user = await getUser(email: email);
+//       if (setAsCurrentUser) {
+//         _user = user;
+//       }
+//       return user;
+//     } on CouldNotFindUser {
+//       final createdUser = await createUser(email: email);
+//       if (setAsCurrentUser) {
+//         _user = createdUser;
+//       }
+//       return createdUser;
+//     } catch (e) {
+//       rethrow;
+//     }
+//   }
 
-    if(updatesCount == 0){
-      throw CouldNotUpdatePassword();
-    } else{
-      final updatePassword = await getPassword(id: password.id);
-      _password.removeWhere((password) => password.id == updatePassword.id);
-      _password.add(updatePassword);
-      _passwordStreamController.add(_password);
-      return updatePassword;
-    }
-  }
+//   Future<void> _cachePasswords() async {
+//     final allPasswords = await getAllPasswords();
+//     _passwords = allPasswords.toList();
+//     _passwordsStreamController.add(_passwords);
+//   }
 
-  Future<Iterable<DatabasePassword>> getAllPasswords() async{
-    final db = _getDatabaseOrThrow();
-    final passwords = await db.query(passwordTable);
+//   Future<DatabasePassword> updatePassword({
+//     required DatabasePassword password,
+//     required String text,
+//   }) async {
+//     await _ensureDbIsOpen();
+//     final db = _getDatabaseOrThrow();
 
-    return passwords.map((passwordRow) => DatabasePassword.fromRow(passwordRow));
-  }
+//     // make sure password exists
+//     await getPassword(id: password.id);
 
-  Future<DatabasePassword> getPassword({required int id}) async{
-    final db = _getDatabaseOrThrow();
-    final passwords = await db.query(
-      passwordTable, 
-      limit: 1, 
-      where: 'id = ?', 
-      whereArgs: [id],
-    );
+//     // update DB
+//     final updatesCount = await db.update(
+//       passwordTable,
+//       {
+//         textColumn: text,
+//         isSyncedWithCloudColumn: 0,
+//       },
+//       where: 'id = ?',
+//       whereArgs: [password.id],
+//     );
 
-    if(passwords.isEmpty){
-      throw CouldNotFindPassword();
-    } else{
-      final password = DatabasePassword.fromRow(passwords.first);
-      _password.removeWhere((password) => password.id == id);
-      _password.add(password);
-      _passwordStreamController.add(_password);
-      return password;
-    }
-  }
+//     if (updatesCount == 0) {
+//       throw CouldNotUpdatePassword();
+//     } else {
+//       final updatedPassword = await getPassword(id: password.id);
+//       _passwords.removeWhere((password) => password.id == updatedPassword.id);
+//       _passwords.add(updatedPassword);
+//       _passwordsStreamController.add(_passwords);
+//       return updatedPassword;
+//     }
+//   }
 
-  Future<int> deleteAllPasswords() async{
-    final db = _getDatabaseOrThrow();
-    final numberofDeletions = await db.delete(passwordTable);
-    _password = [];
-    _passwordStreamController.add(_password);
-    return numberofDeletions;
-  }
+//   Future<Iterable<DatabasePassword>> getAllPasswords() async {
+//     await _ensureDbIsOpen();
+//     final db = _getDatabaseOrThrow();
+//     final passwords = await db.query(passwordTable);
 
-  Future<void> deletePassword({required int id}) async{
-    final db = _getDatabaseOrThrow();
-    final deletedCount = await db.delete(
-      passwordTable, 
-      where: 'id = ?', 
-      whereArgs: [id],
-    );
-    if(deletedCount == 0){
-      throw CouldNotDeletePassword();
-    } else{
-      _password.removeWhere((password) => password.id == id);
-      _passwordStreamController.add(_password);
-    }
-  }
+//     return passwords.map((passwordRow) => DatabasePassword.fromRow(passwordRow));
+//   }
 
-  Future<DatabasePassword> createPassword({required DatabaseUser owner}) async{
-    final db = _getDatabaseOrThrow();
-    
-    // making sure owner exists with the correct id
-    final dbUser = await getUser(email: owner.email);
-    if(dbUser != owner){
-      throw CouldNotFindUser();
-    } 
+//   Future<DatabasePassword> getPassword({required int id}) async {
+//     await _ensureDbIsOpen();
+//     final db = _getDatabaseOrThrow();
+//     final passwords = await db.query(
+//       passwordTable,
+//       limit: 1,
+//       where: 'id = ?',
+//       whereArgs: [id],
+//     );
 
-    const text = '';
-    //create new password
-    final passwordId = await db.insert(passwordTable, {
-      userIdColumn : owner.id,
-      textColumn : text,
-      isSynchedWithCloudColumn : 1
-    });
+//     if (passwords.isEmpty) {
+//       throw CouldNotFindPassword();
+//     } else {
+//       final password = DatabasePassword.fromRow(passwords.first);
+//       _passwords.removeWhere((password) => password.id == id);
+//       _passwords.add(password);
+//       _passwordsStreamController.add(_passwords);
+//       return password;
+//     }
+//   }
 
-    final password = DatabasePassword(
-      id: passwordId, 
-      userId: owner.id, 
-      text: text, 
-      isSynchedWithCloud: true,
-    );
+//   Future<int> deleteAllPasswords() async {
+//     await _ensureDbIsOpen();
+//     final db = _getDatabaseOrThrow();
+//     final numberOfDeletions = await db.delete(passwordTable);
+//     _passwords = [];
+//     _passwordsStreamController.add(_passwords);
+//     return numberOfDeletions;
+//   }
 
-    _password.add(password);
-    _passwordStreamController.add(_password);
+//   Future<void> deletePassword({required int id}) async {
+//     await _ensureDbIsOpen();
+//     final db = _getDatabaseOrThrow();
+//     final deletedCount = await db.delete(
+//       passwordTable,
+//       where: 'id = ?',
+//       whereArgs: [id],
+//     );
+//     if (deletedCount == 0) {
+//       throw CouldNotDeletePassword();
+//     } else {
+//       _passwords.removeWhere((password) => password.id == id);
+//       _passwordsStreamController.add(_passwords);
+//     }
+//   }
 
-    return password;
-  }
+//   Future<DatabasePassword> createPassword({required DatabaseUser owner}) async {
+//     await _ensureDbIsOpen();
+//     final db = _getDatabaseOrThrow();
 
-  Future<DatabaseUser> getUser({required String email}) async{
-    final db = _getDatabaseOrThrow();
+//     // make sure owner exists in the database with the correct id
+//     final dbUser = await getUser(email: owner.email);
+//     if (dbUser != owner) {
+//       throw CouldNotFindUser();
+//     }
 
-    final results = await db.query(
-      userTable, 
-      limit: 1, 
-      where: 'email = ?', 
-      whereArgs: [email.toLowerCase()],
-    );
+//     const text = '';
+//     // create the password
+//     final passwordId = await db.insert(passwordTable, {
+//       userIdColumn: owner.id,
+//       textColumn: text,
+//       isSyncedWithCloudColumn: 1,
+//     });
 
-    if(results.isEmpty){
-      throw CouldNotFindUser();
-    } else{
-      return DatabaseUser.fromRow(results.first);
-    }
-  }
+//     final password = DatabasePassword(
+//       id: passwordId,
+//       userId: owner.id,
+//       text: text,
+//       isSyncedWithCloud: true,
+//     );
 
-  Future<DatabaseUser> createUser({required String email}) async{
-    final db = _getDatabaseOrThrow();
-    final results = await db.query(
-      userTable, 
-      limit: 1, 
-      where: 'email = ?', 
-      whereArgs: [email.toLowerCase()],
-    );
-    if(results.isNotEmpty){
-      throw UserAlreadyExists();
-    }
+//     _passwords.add(password);
+//     _passwordsStreamController.add(_passwords);
 
-    final userId = await db.insert(userTable, {
-      emailColumn: email.toLowerCase()
-      });
+//     return password;
+//   }
 
-      return DatabaseUser(
-        id: userId, 
-        email: email,
-      );
-  }
+//   Future<DatabaseUser> getUser({required String email}) async {
+//     await _ensureDbIsOpen();
+//     final db = _getDatabaseOrThrow();
 
-  Future<void> deleteUser({required String email}) async{
-    final db = _getDatabaseOrThrow();
-    final deletedCount = await db.delete(
-      userTable, 
-      where: 'email = ?', 
-      whereArgs: [email.toLowerCase()],
-    );
-    if(deletedCount != 1){
-      throw CouldNotDeleteUser();
-    }
-  }
+//     final results = await db.query(
+//       userTable,
+//       limit: 1,
+//       where: 'email = ?',
+//       whereArgs: [email.toLowerCase()],
+//     );
 
-  Database _getDatabaseOrThrow() {
-    final db = _db;
-    if(db == null){
-      throw DatabaseIsNotOpen();
-    } else{
-      return db;
-    }
-  }
+//     if (results.isEmpty) {
+//       throw CouldNotFindUser();
+//     } else {
+//       return DatabaseUser.fromRow(results.first);
+//     }
+//   }
 
-  Future<void> close() async{
-    final db = _db;
-    if(db == null){
-      throw DatabaseIsNotOpen();
-    } else{
-      await db.close();
-      _db = null;
-    }}
+//   Future<DatabaseUser> createUser({required String email}) async {
+//     await _ensureDbIsOpen();
+//     final db = _getDatabaseOrThrow();
+//     final results = await db.query(
+//       userTable,
+//       limit: 1,
+//       where: 'email = ?',
+//       whereArgs: [email.toLowerCase()],
+//     );
+//     if (results.isNotEmpty) {
+//       throw UserAlreadyExists();
+//     }
 
-  Future<void> open() async{
-    if(_db != null){
-      throw DatabaseAlreadyOpenException();
-    }
-    try{
-      final docsPath = await getApplicationDocumentsDirectory();
-      final dbPath = join(docsPath.path, dbName);
-      final db = await openDatabase(dbPath);
-      _db = db;
+//     final userId = await db.insert(userTable, {
+//       emailColumn: email.toLowerCase(),
+//     });
 
-      // create the user table
-      await db.execute(createUserTable);
-      // create the password table
-      await db.execute(createPasswordTable);
-      await _cachePassword();
-    } on MissingPlatformDirectoryException {
-      throw UnableToGetDocumentsDirectory();
-    }}
-}
+//     return DatabaseUser(
+//       id: userId,
+//       email: email,
+//     );
+//   }
 
-@immutable
-class DatabaseUser {
-  final int id;
-  final String email;
-  const DatabaseUser({
-    required this.id, 
-    required this.email,
-  });
+//   Future<void> deleteUser({required String email}) async {
+//     await _ensureDbIsOpen();
+//     final db = _getDatabaseOrThrow();
+//     final deletedCount = await db.delete(
+//       userTable,
+//       where: 'email = ?',
+//       whereArgs: [email.toLowerCase()],
+//     );
+//     if (deletedCount != 1) {
+//       throw CouldNotDeleteUser();
+//     }
+//   }
 
-  DatabaseUser.fromRow(Map<String, Object?> map)
-      : id = map[idColumn] as int, 
-        email = map[emailColumn] as String;
+//   Database _getDatabaseOrThrow() {
+//     final db = _db;
+//     if (db == null) {
+//       throw DatabaseIsNotOpen();
+//     } else {
+//       return db;
+//     }
+//   }
 
-  @override
-  String toString() => 'Person, ID =$id, email = $email';
+//   Future<void> close() async {
+//     final db = _db;
+//     if (db == null) {
+//       throw DatabaseIsNotOpen();
+//     } else {
+//       await db.close();
+//       _db = null;
+//     }
+//   }
 
-  @override bool operator ==(covariant DatabaseUser other) => id == other.id;
-  
-  @override
-  int get hashCode => id.hashCode;
-}
+//   Future<void> _ensureDbIsOpen() async {
+//     try {
+//       await open();
+//     } on DatabaseAlreadyOpenException {
+//       // empty
+//     }
+//   }
 
-class DatabasePassword{
-  final int id;
-  final int userId;
-  final String text;
-  final bool isSynchedWithCloud;
+//   Future<void> open() async {
+//     if (_db != null) {
+//       throw DatabaseAlreadyOpenException();
+//     }
+//     try {
+//       final docsPath = await getApplicationDocumentsDirectory();
+//       final dbPath = join(docsPath.path, dbName);
+//       final db = await openDatabase(dbPath);
+//       _db = db;
+//       // create the user table
+//       await db.execute(createUserTable);
+//       // create password table
+//       await db.execute(createPasswordTable);
+//       await _cachePasswords();
+//     } on MissingPlatformDirectoryException {
+//       throw UnableToGetDocumentsDirectory();
+//     }
+//   }
+// }
 
-  DatabasePassword({
-    required this.id,
-    required this.userId,
-    required this.text,
-    required this.isSynchedWithCloud,
-  });
+// @immutable
+// class DatabaseUser {
+//   final int id;
+//   final String email;
+//   const DatabaseUser({
+//     required this.id,
+//     required this.email,
+//   });
 
-    DatabasePassword.fromRow(Map<String, Object?> map)
-      : id = map[idColumn] as int, 
-        userId = map[userIdColumn] as int,
-        text = map[textColumn] as String,
-        isSynchedWithCloud = (map[isSynchedWithCloudColumn] as int) == 1 ? true : false;
+//   DatabaseUser.fromRow(Map<String, Object?> map)
+//       : id = map[idColumn] as int,
+//         email = map[emailColumn] as String;
 
-  @override
-  String toString() => 'Password, ID = $id, userId = $userId, isSynchedWithCloud = $isSynchedWithCloud, text =$text';
+//   @override
+//   String toString() => 'Person, ID = $id, email = $email';
 
-  @override bool operator ==(covariant DatabasePassword other) => id == other.id;
-  
-  @override
-  int get hashCode => id.hashCode;
-}
+//   @override
+//   bool operator ==(covariant DatabaseUser other) => id == other.id;
 
-const dbName = 'passwords.db';
-const passwordTable = 'password';
-const userTable = 'user';
-const idColumn = 'id';
-const emailColumn = 'email';
-const userIdColumn = 'user_id';
-const textColumn = 'text';
-const isSynchedWithCloudColumn = 'is_synched_with_cloud';
+//   @override
+//   int get hashCode => id.hashCode;
+// }
 
-const createUserTable = '''CREATE TABLE IF NOT EXISTS "user" (
-  "id"	INTEGER NOT NULL,
-  "email"	TEXT NOT NULL UNIQUE,
-  PRIMARY KEY("id" AUTOINCREMENT)
-);''';
+// class DatabasePassword {
+//   final int id;
+//   final int userId;
+//   final String text;
+//   final bool isSyncedWithCloud;
 
-const createPasswordTable = '''CREATE TABLE IF NOT EXISTS "password" (
-  "id"	INTEGER NOT NULL,
-  "user_id"	INTEGER NOT NULL,
-  "text"	TEXT,
-  "is_synced_with_server"	INTEGER NOT NULL DEFAULT 0,
-  FOREIGN KEY("user_id") REFERENCES "user"("id"),
-  PRIMARY KEY("id" AUTOINCREMENT)
-); ''';
+//   DatabasePassword({
+//     required this.id,
+//     required this.userId,
+//     required this.text,
+//     required this.isSyncedWithCloud,
+//   });
+
+//   DatabasePassword.fromRow(Map<String, Object?> map)
+//       : id = map[idColumn] as int,
+//         userId = map[userIdColumn] as int,
+//         text = map[textColumn] as String,
+//         isSyncedWithCloud =
+//             (map[isSyncedWithCloudColumn] as int) == 1 ? true : false;
+
+//   @override
+//   String toString() =>
+//       'Password, ID = $id, userId = $userId, isSyncedWithCloud = $isSyncedWithCloud, text = $text';
+
+//   @override
+//   bool operator ==(covariant DatabasePassword other) => id == other.id;
+
+//   @override
+//   int get hashCode => id.hashCode;
+// }
+
+// const dbName = 'passwords.db';
+// const passwordTable = 'password';
+// const userTable = 'user';
+// const idColumn = 'id';
+// const emailColumn = 'email';
+// const userIdColumn = 'user_id';
+// const textColumn = 'text';
+// const isSyncedWithCloudColumn = 'is_synced_with_cloud';
+// const createUserTable = '''CREATE TABLE IF NOT EXISTS "user" (
+//         "id"	INTEGER NOT NULL,
+//         "email"	TEXT NOT NULL UNIQUE,
+//         PRIMARY KEY("id" AUTOINCREMENT)
+//       );''';
+// const createPasswordTable = '''CREATE TABLE IF NOT EXISTS "password" (
+//         "id"	INTEGER NOT NULL,
+//         "user_id"	INTEGER NOT NULL,
+//         "text"	TEXT,
+//         "is_synced_with_cloud"	INTEGER NOT NULL DEFAULT 0,
+//         FOREIGN KEY("user_id") REFERENCES "user"("id"),
+//         PRIMARY KEY("id" AUTOINCREMENT)
+//       );''';

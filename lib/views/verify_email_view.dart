@@ -1,40 +1,54 @@
 import 'package:flutter/material.dart';
-import 'package:secure_pass/constants/routes.dart';
-import 'package:secure_pass/services/auth/auth_service.dart';
+import 'package:secure_pass/extensions/buildcontext/loc.dart';
+import 'package:secure_pass/services/auth/bloc/auth_bloc.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:secure_pass/services/auth/bloc/auth_event.dart';
 
 class VerifyEmailView extends StatefulWidget {
-  const VerifyEmailView({ Key? key }) : super(key: key);
+  const VerifyEmailView({Key? key}) : super(key: key);
 
   @override
-  State<VerifyEmailView> createState() => _VerifyEmailViewState();
+  _VerifyEmailViewState createState() => _VerifyEmailViewState();
 }
 
 class _VerifyEmailViewState extends State<VerifyEmailView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Verify email')),
-      body: Column(
-        children: [
-          const Text("We've sent you an email verification. Please open it to verify your account."),
-          const Text("If you haven't received a verification email yet, press the button below."),
+      appBar: AppBar(
+        title: Text(context.loc.verify_email),
+      ),
+      body: SingleChildScrollView(
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Text(
+                context.loc.verify_email_view_prompt,
+              ),
+            ),
             TextButton(
-            onPressed: () async{
-              await AuthService.firebase().sendEmailVerification();
-            }, 
-          child: const Text('Send email verification'),
+              onPressed: () {
+                context.read<AuthBloc>().add(
+                      const AuthEventSendEmailVerification(),
+                    );
+              },
+              child: Text(
+                context.loc.verify_email_send_email_verification,
+              ),
             ),
             TextButton(
               onPressed: () async {
-              await AuthService.firebase().logOut();
-              Navigator.of(context).pushNamedAndRemoveUntil(
-                registerRoute, 
-                (route) => false,
-              );
-            }, 
-            child: const Text('Restart'),
+                context.read<AuthBloc>().add(
+                      const AuthEventLogOut(),
+                    );
+              },
+              child: Text(
+                context.loc.restart,
+              ),
             )
-        ],
+          ],
+        ),
       ),
     );
   }
