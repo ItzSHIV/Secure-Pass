@@ -3,6 +3,7 @@ import 'package:secure_pass/constants/routes.dart';
 import 'package:secure_pass/services/auth/auth_service.dart';
 import 'package:secure_pass/views/login_view.dart';
 import 'package:secure_pass/views/passwords/create_update_password_view.dart';
+import 'package:secure_pass/views/passwords/password_generator_view.dart';
 import 'package:secure_pass/views/passwords/passwords_view.dart';
 import 'package:secure_pass/views/register_view.dart';
 import 'package:secure_pass/views/verify_email_view.dart';
@@ -19,9 +20,10 @@ void main() {
       routes: {
         loginRoute: (context) => const LoginView(),
         registerRoute: (context) => const RegisterView(),
-        notesRoute: (context) => const NotesView(),
+        passwordsRoute: (context) => const PasswordsView(),
         verifyEmailRoute: (context) => const VerifyEmailView(),
-        createOrUpdateNoteRoute: (context) => const CreateUpdateNoteView(),
+        createOrUpdatePasswordRoute: (context) => const CreateUpdatePasswordView(),
+        passwordGeneratorRoute :(context) => const PasswordGeneratorView(),
       },
     ),
   );
@@ -40,7 +42,7 @@ class HomePage extends StatelessWidget {
             final user = AuthService.firebase().currentUser;
             if (user != null) {
               if (user.isEmailVerified) {
-                return const NotesView();
+                return const PasswordsView();
               } else {
                 return const VerifyEmailView();
               }

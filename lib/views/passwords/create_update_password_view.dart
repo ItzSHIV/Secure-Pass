@@ -7,33 +7,33 @@ import 'package:secure_pass/services/cloud/cloud_storage_exceptions.dart';
 import 'package:secure_pass/services/cloud/firebase_cloud_storage.dart';
 import 'package:share_plus/share_plus.dart';
 
-class CreateUpdateNoteView extends StatefulWidget {
-  const CreateUpdateNoteView({Key? key}) : super(key: key);
+class CreateUpdatePasswordView extends StatefulWidget {
+  const CreateUpdatePasswordView({Key? key}) : super(key: key);
 
   @override
-  _CreateUpdateNoteViewState createState() => _CreateUpdateNoteViewState();
+  _CreateUpdatePasswordViewState createState() => _CreateUpdatePasswordViewState();
 }
 
-class _CreateUpdateNoteViewState extends State<CreateUpdateNoteView> {
-  CloudNote? _note;
-  late final FirebaseCloudStorage _notesService;
+class _CreateUpdatePasswordViewState extends State<CreateUpdatePasswordView> {
+  CloudPassword? _password;
+  late final FirebaseCloudStorage _passwordsService;
   late final TextEditingController _textController;
 
   @override
   void initState() {
-    _notesService = FirebaseCloudStorage();
+    _passwordsService = FirebaseCloudStorage();
     _textController = TextEditingController();
     super.initState();
   }
 
   void _textControllerListener() async {
-    final note = _note;
-    if (note == null) {
+    final password = _password;
+    if (password == null) {
       return;
     }
     final text = _textController.text;
-    await _notesService.updateNote(
-      documentId: note.documentId,
+    await _passwordsService.updatePassword(
+      documentId: password.documentId,
       text: text,
     );
   }
@@ -43,39 +43,39 @@ class _CreateUpdateNoteViewState extends State<CreateUpdateNoteView> {
     _textController.addListener(_textControllerListener);
   }
 
-  Future<CloudNote> createOrGetExistingNote(BuildContext context) async {
-    final widgetNote = context.getArgument<CloudNote>();
+  Future<CloudPassword> createOrGetExistingPassword(BuildContext context) async {
+    final widgetPassword = context.getArgument<CloudPassword>();
 
-    if (widgetNote != null) {
-      _note = widgetNote;
-      _textController.text = widgetNote.text;
-      return widgetNote;
+    if (widgetPassword != null) {
+      _password = widgetPassword;
+      _textController.text = widgetPassword.text;
+      return widgetPassword;
     }
 
-    final existingNote = _note;
-    if (existingNote != null) {
-      return existingNote;
+    final existingPassword = _password;
+    if (existingPassword != null) {
+      return existingPassword;
     }
     final currentUser = AuthService.firebase().currentUser!;
     final userId = currentUser.id;
-    final newNote = await _notesService.createNewNote(ownerUserId: userId);
-    _note = newNote;
-    return newNote;
+    final newPassword = await _passwordsService.createNewPassword(ownerUserId: userId);
+    _password = newPassword;
+    return newPassword;
   }
 
-  void _deleteNoteIfTextIsEmpty() {
-    final note = _note;
-    if (_textController.text.isEmpty && note != null) {
-      _notesService.deleteNote(documentId: note.documentId);
+  void _deletePasswordIfTextIsEmpty() {
+    final password = _password;
+    if (_textController.text.isEmpty && password != null) {
+      _passwordsService.deletePassword(documentId: password.documentId);
     }
   }
 
-  void _saveNoteIfTextNotEmpty() async {
-    final note = _note;
+  void _savePasswordIfTextNotEmpty() async {
+    final password = _password;
     final text = _textController.text;
-    if (note != null && text.isNotEmpty) {
-      await _notesService.updateNote(
-        documentId: note.documentId,
+    if (password != null && text.isNotEmpty) {
+      await _passwordsService.updatePassword(
+        documentId: password.documentId,
         text: text,
       );
     }
@@ -83,8 +83,8 @@ class _CreateUpdateNoteViewState extends State<CreateUpdateNoteView> {
 
   @override
   void dispose() {
-    _deleteNoteIfTextIsEmpty();
-    _saveNoteIfTextNotEmpty();
+    _deletePasswordIfTextIsEmpty();
+    _savePasswordIfTextNotEmpty();
     _textController.dispose();
     super.dispose();
   }
@@ -93,13 +93,13 @@ class _CreateUpdateNoteViewState extends State<CreateUpdateNoteView> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('New Note'),
+        title: const Text('New Password'),
         actions: [
           IconButton(
             onPressed: () async {
               final text = _textController.text;
-              if (_note == null || text.isEmpty) {
-                await showCannotShareEmptyNoteDialog(context);
+              if (_password == null || text.isEmpty) {
+                await showCannotShareEmptyPasswordDialog(context);
               } else {
                 Share.share(text);
               }
@@ -109,7 +109,7 @@ class _CreateUpdateNoteViewState extends State<CreateUpdateNoteView> {
         ],
       ),
       body: FutureBuilder(
-        future: createOrGetExistingNote(context),
+        future: createOrGetExistingPassword(context),
         builder: (context, snapshot) {
           switch (snapshot.connectionState) {
             case ConnectionState.done:
@@ -119,7 +119,7 @@ class _CreateUpdateNoteViewState extends State<CreateUpdateNoteView> {
                 keyboardType: TextInputType.multiline,
                 maxLines: null,
                 decoration: const InputDecoration(
-                  hintText: 'Start typing your note...',
+                  hintText: 'Start typing your password...',
                 ),
               );
             default:

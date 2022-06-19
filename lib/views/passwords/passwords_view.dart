@@ -5,23 +5,24 @@ import 'package:secure_pass/services/auth/auth_service.dart';
 import 'package:secure_pass/services/cloud/cloud_password.dart';
 import 'package:secure_pass/services/cloud/firebase_cloud_storage.dart';
 import 'package:secure_pass/utilities/dialogs/logout_dialog.dart';
+import 'package:secure_pass/views/passwords/password_generator_view.dart';
 import 'package:secure_pass/views/passwords/passwords_list_view.dart';
 import 'package:secure_pass/views/passwords/password_generator.dart';
 
-class NotesView extends StatefulWidget {
-  const NotesView({Key? key}) : super(key: key);
+class PasswordsView extends StatefulWidget {
+  const PasswordsView({Key? key}) : super(key: key);
 
   @override
-  _NotesViewState createState() => _NotesViewState();
+  _PasswordsViewState createState() => _PasswordsViewState();
 }
 
-class _NotesViewState extends State<NotesView> {
-  late final FirebaseCloudStorage _notesService;
+class _PasswordsViewState extends State<PasswordsView> {
+  late final FirebaseCloudStorage _passwordsService;
   String get userId => AuthService.firebase().currentUser!.id;
 
   @override
   void initState() {
-    _notesService = FirebaseCloudStorage();
+    _passwordsService = FirebaseCloudStorage();
     super.initState();
   }
 
@@ -33,7 +34,7 @@ class _NotesViewState extends State<NotesView> {
         actions: [
           IconButton(
             onPressed: () {
-              Navigator.of(context).pushNamed(createOrUpdateNoteRoute);
+              Navigator.of(context).pushNamed(createOrUpdatePasswordRoute);
             },
             icon: const Icon(Icons.add),
           ),
@@ -51,7 +52,11 @@ class _NotesViewState extends State<NotesView> {
                   }
                   break;
                 case MenuAction.passwordGenerator:
-                  
+                  Navigator.of(context).pushNamedAndRemoveUntil(
+                    passwordGeneratorRoute, 
+                    (_) => false
+                  );
+                  break;
               }
             },
             itemBuilder: (context) {
@@ -70,22 +75,22 @@ class _NotesViewState extends State<NotesView> {
         ],
       ),
       body: StreamBuilder(
-        stream: _notesService.allNotes(ownerUserId: userId),
+        stream: _passwordsService.allPasswords(ownerUserId: userId),
         builder: (context, snapshot) {
           switch (snapshot.connectionState) {
             case ConnectionState.waiting:
             case ConnectionState.active:
               if (snapshot.hasData) {
-                final allNotes = snapshot.data as Iterable<CloudNote>;
-                return NotesListView(
-                  notes: allNotes,
-                  onDeleteNote: (note) async {
-                    await _notesService.deleteNote(documentId: note.documentId);
+                final allPasswords = snapshot.data as Iterable<CloudPassword>;
+                return PasswordsListView(
+                  passwords: allPasswords,
+                  onDeletePassword: (password) async {
+                    await _passwordsService.deletePassword(documentId: password.documentId);
                   },
-                  onTap: (note) {
+                  onTap: (password) {
                     Navigator.of(context).pushNamed(
-                      createOrUpdateNoteRoute,
-                      arguments: note,
+                      createOrUpdatePasswordRoute,
+                      arguments: password,
                     );
                   },
                 );

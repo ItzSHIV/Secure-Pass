@@ -2,32 +2,32 @@ import 'package:flutter/material.dart';
 import 'package:secure_pass/services/cloud/cloud_password.dart';
 import 'package:secure_pass/utilities/dialogs/delete_dialog.dart';
 
-typedef NoteCallback = void Function(CloudNote note);
+typedef PasswordCallback = void Function(CloudPassword password);
 
-class NotesListView extends StatelessWidget {
-  final Iterable<CloudNote> notes;
-  final NoteCallback onDeleteNote;
-  final NoteCallback onTap;
+class PasswordsListView extends StatelessWidget {
+  final Iterable<CloudPassword> passwords;
+  final PasswordCallback onDeletePassword;
+  final PasswordCallback onTap;
 
-  const NotesListView({
+  const PasswordsListView({
     Key? key,
-    required this.notes,
-    required this.onDeleteNote,
+    required this.passwords,
+    required this.onDeletePassword,
     required this.onTap,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return ListView.builder(
-      itemCount: notes.length,
+      itemCount: passwords.length,
       itemBuilder: (context, index) {
-        final note = notes.elementAt(index);
+        final password = passwords.elementAt(index);
         return ListTile(
           onTap: () {
-            onTap(note);
+            onTap(password);
           },
           title: Text(
-            note.text,
+            password.text,
             maxLines: 1,
             softWrap: true,
             overflow: TextOverflow.ellipsis,
@@ -36,7 +36,7 @@ class NotesListView extends StatelessWidget {
             onPressed: () async {
               final shouldDelete = await showDeleteDialog(context);
               if (shouldDelete) {
-                onDeleteNote(note);
+                onDeletePassword(password);
               }
             },
             icon: const Icon(Icons.delete),

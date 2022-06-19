@@ -4,56 +4,56 @@ import 'package:secure_pass/services/cloud/cloud_storage_constants.dart';
 import 'package:secure_pass/services/cloud/cloud_storage_exceptions.dart';
 
 class FirebaseCloudStorage {
-  final notes = FirebaseFirestore.instance.collection('notes');
+  final passwords = FirebaseFirestore.instance.collection('passwords');
 
-  Future<void> deleteNote({required String documentId}) async {
+  Future<void> deletePassword({required String documentId}) async {
     try {
-      await notes.doc(documentId).delete();
+      await passwords.doc(documentId).delete();
     } catch (e) {
-      throw CouldNotDeleteNoteException();
+      throw CouldNotDeletePasswordException();
     }
   }
 
-  Future<void> updateNote({
+  Future<void> updatePassword({
     required String documentId,
     required String text,
   }) async {
     try {
-      await notes.doc(documentId).update({textFieldName: text});
+      await passwords.doc(documentId).update({textFieldName: text});
     } catch (e) {
-      throw CouldNotUpdateNoteException();
+      throw CouldNotUpdatePasswordException();
     }
   }
 
-  Stream<Iterable<CloudNote>> allNotes({required String ownerUserId}) =>
-      notes.snapshots().map((event) => event.docs
-          .map((doc) => CloudNote.fromSnapshot(doc))
-          .where((note) => note.ownerUserId == ownerUserId));
+  Stream<Iterable<CloudPassword>> allPasswords({required String ownerUserId}) =>
+      passwords.snapshots().map((event) => event.docs
+          .map((doc) => CloudPassword.fromSnapshot(doc))
+          .where((password) => password.ownerUserId == ownerUserId));
 
-  Future<Iterable<CloudNote>> getNotes({required String ownerUserId}) async {
+  Future<Iterable<CloudPassword>> getPasswords({required String ownerUserId}) async {
     try {
-      return await notes
+      return await passwords
           .where(
             ownerUserIdFieldName,
             isEqualTo: ownerUserId,
           )
           .get()
           .then(
-            (value) => value.docs.map((doc) => CloudNote.fromSnapshot(doc)),
+            (value) => value.docs.map((doc) => CloudPassword.fromSnapshot(doc)),
           );
     } catch (e) {
-      throw CouldNotGetAllNotesException();
+      throw CouldNotGetAllPasswordsException();
     }
   }
 
-  Future<CloudNote> createNewNote({required String ownerUserId}) async {
-    final document = await notes.add({
+  Future<CloudPassword> createNewPassword({required String ownerUserId}) async {
+    final document = await passwords.add({
       ownerUserIdFieldName: ownerUserId,
       textFieldName: '',
     });
-    final fetchedNote = await document.get();
-    return CloudNote(
-      documentId: fetchedNote.id,
+    final fetchedPassword = await document.get();
+    return CloudPassword(
+      documentId: fetchedPassword.id,
       ownerUserId: ownerUserId,
       text: '',
     );
