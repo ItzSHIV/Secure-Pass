@@ -6,6 +6,7 @@ import 'package:secure_pass/services/cloud/cloud_password.dart';
 import 'package:secure_pass/services/cloud/firebase_cloud_storage.dart';
 import 'package:secure_pass/utilities/dialogs/logout_dialog.dart';
 import 'package:secure_pass/views/passwords/passwords_list_view.dart';
+import 'package:secure_pass/views/passwords/password_generator.dart';
 
 class NotesView extends StatefulWidget {
   const NotesView({Key? key}) : super(key: key);
@@ -28,7 +29,7 @@ class _NotesViewState extends State<NotesView> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Your Notes'),
+        title: const Text('Your Passwords'),
         actions: [
           IconButton(
             onPressed: () {
@@ -48,10 +49,17 @@ class _NotesViewState extends State<NotesView> {
                       (_) => false,
                     );
                   }
+                  break;
+                case MenuAction.passwordGenerator:
+                  
               }
             },
             itemBuilder: (context) {
               return const [
+                PopupMenuItem<MenuAction>(
+                  value: MenuAction.passwordGenerator,
+                  child: Text('Password Generator'),
+                ),
                 PopupMenuItem<MenuAction>(
                   value: MenuAction.logout,
                   child: Text('Log out'),
